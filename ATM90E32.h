@@ -270,17 +270,17 @@ enum atm90_chan
 	ATM90_CHAN_B,
 	ATM90_CHAN_C,
 };
-typedef struct atm90e32_calib_meas_gain
+struct atm90e32_calib_meas_gain
 {
 	unsigned short ugain;
 	unsigned short igain;
 };
-typedef struct atm90e32_calib_meas_offset
+struct atm90e32_calib_meas_offset
 {
 	unsigned short uoffset;
 	unsigned short ioffset;
 };
-typedef struct atm90e32_calib_energy
+struct atm90e32_calib_energy
 {
 	unsigned short poffset;
 	unsigned short qoffset;
@@ -288,9 +288,9 @@ typedef struct atm90e32_calib_energy
 	unsigned short phi;
 };
 
-typedef struct atm90e32_calibration
+struct atm90e32_calibration
 {
-	uint8_t mac[8]; // Use ESP.getEfuseMac()
+	uint64_t mac;
 	unsigned short mmode0;
 	unsigned short mmode1;
 	unsigned short pga_gain;
