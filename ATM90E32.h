@@ -287,25 +287,18 @@ struct atm90e32_calib_energy
 	unsigned short pqgain;
 	unsigned short phi;
 };
-
 struct atm90e32_calibration {
-    union {
-        struct {
-            unsigned short mmode0;
-            unsigned short mmode1;
-            unsigned short pga_gain;
-            atm90e32_calib_meas_gain meas_gain_a;
-            atm90e32_calib_meas_gain meas_gain_b;
-            atm90e32_calib_meas_gain meas_gain_c;
-            atm90e32_calib_meas_offset meas_offset_a;
-            atm90e32_calib_meas_offset meas_offset_b;
-            atm90e32_calib_meas_offset meas_offset_c;
-        };
-        unsigned char raw[sizeof(unsigned short)*3 +
-                          sizeof(atm90e32_calib_meas_gain)*3 +
-                          sizeof(atm90e32_calib_meas_offset)*3];
-    };
+	unsigned short mmode0;
+	unsigned short mmode1;
+	unsigned short pga_gain;
+	atm90e32_calib_meas_gain meas_gain_a;
+	atm90e32_calib_meas_gain meas_gain_b;
+	atm90e32_calib_meas_gain meas_gain_c;
+	atm90e32_calib_meas_offset meas_offset_a;
+	atm90e32_calib_meas_offset meas_offset_b;
+	atm90e32_calib_meas_offset meas_offset_c;
 };
+
 
 const atm90e32_calibration default_cal = {
 	// DEFAULT CALIBRATION
