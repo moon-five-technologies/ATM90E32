@@ -19,6 +19,6 @@
       "maintainer": true
     }
   ],
-  "frameworks": "arduino",
+  "frameworks": "*",
   "platforms": ["espressif8266", "espressif32", "atmelsam", "atmelmegaavr", "atmelavr"]
 }
