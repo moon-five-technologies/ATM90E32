@@ -398,7 +398,7 @@ public:
 	double GetTemperature();
 
 	/* Gain Parameters (GET)*/
-	double GetValueRegister(unsigned short registerRead);
+	unsigned short GetValueRegister(unsigned short registerRead);
 
 	/* Energy Consumption */
 	double GetImportEnergy();

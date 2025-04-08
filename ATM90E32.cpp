@@ -100,40 +100,40 @@ double ATM90E32::CalculateVIGain(unsigned short reg, unsigned short actualVal)
 // VOLTAGE
 double ATM90E32::GetLineVoltageA()
 {
-  unsigned short voltage = _comms.transact(_comms.SPI_TRANS::READ, UrmsA);
+  unsigned short voltage = GetValueRegister(UrmsA);
   return (double)voltage / 100;
 }
 double ATM90E32::GetLineVoltageB()
 {
-  unsigned short voltage = _comms.transact(_comms.SPI_TRANS::READ, UrmsB);
+  unsigned short voltage = GetValueRegister(UrmsB);
   return (double)voltage / 100;
 }
 double ATM90E32::GetLineVoltageC()
 {
-  unsigned short voltage = _comms.transact(_comms.SPI_TRANS::READ, UrmsC);
+  unsigned short voltage = GetValueRegister(UrmsC);
   return (double)voltage / 100;
 }
 
 // CURRENT
 double ATM90E32::GetLineCurrentA()
 {
-  unsigned short current = _comms.transact(_comms.SPI_TRANS::READ, IrmsA);
+  unsigned short current = GetValueRegister(IrmsA);
   return (double)current / 1000;
 }
 double ATM90E32::GetLineCurrentB()
 {
-  unsigned short current = _comms.transact(_comms.SPI_TRANS::READ, IrmsB);
+  unsigned short current = GetValueRegister(IrmsB);
   return (double)current / 1000;
 }
 double ATM90E32::GetLineCurrentC()
 {
-  unsigned short current = _comms.transact(_comms.SPI_TRANS::READ, IrmsC);
+  unsigned short current = GetValueRegister(IrmsC);
   return (double)current / 1000;
 }
 
 double ATM90E32::GetLineCurrentN()
 {
-  unsigned short current = _comms.transact(_comms.SPI_TRANS::READ, IrmsN);
+  unsigned short current = GetValueRegister(IrmsN);
   return (double)current / 1000;
 }
 
@@ -220,29 +220,29 @@ double ATM90E32::GetTotalApparentPower()
 // FREQUENCY
 double ATM90E32::GetFrequency()
 {
-  unsigned short freq = _comms.transact(_comms.SPI_TRANS::READ, Freq);
+  unsigned short freq = GetValueRegister(Freq);
   return (double)freq / 100;
 }
 
 // POWER FACTOR
 double ATM90E32::GetPowerFactorA()
 {
-  signed short pf = (signed short)_comms.transact(_comms.SPI_TRANS::READ, PFmeanA);
+  signed short pf = (signed short)GetValueRegister(PFmeanA);
   return (double)pf / 1000;
 }
 double ATM90E32::GetPowerFactorB()
 {
-  signed short pf = (signed short)_comms.transact(_comms.SPI_TRANS::READ, PFmeanB);
+  signed short pf = (signed short)GetValueRegister(PFmeanB);
   return (double)pf / 1000;
 }
 double ATM90E32::GetPowerFactorC()
 {
-  signed short pf = (signed short)_comms.transact(_comms.SPI_TRANS::READ, PFmeanC);
+  signed short pf = (signed short)GetValueRegister(PFmeanC);
   return (double)pf / 1000;
 }
 double ATM90E32::GetTotalPowerFactor()
 {
-  signed short pf = (signed short)_comms.transact(_comms.SPI_TRANS::READ, PFmeanT);
+  signed short pf = (signed short)GetValueRegister(PFmeanT);
   return (double)pf / 1000;
 }
 
@@ -272,9 +272,9 @@ double ATM90E32::GetTemperature()
 
 /* Gets the Register Value if Desired */
 // REGISTER
-double ATM90E32::GetValueRegister(unsigned short registerRead)
+unsigned short ATM90E32::GetValueRegister(unsigned short registerRead)
 {
-  return (double)_comms.transact(_comms.SPI_TRANS::READ, registerRead); // returns value register
+  return _comms.transact(_comms.SPI_TRANS::READ, registerRead);
 }
 
 // REGULAR ENERGY MEASUREMENT
@@ -283,7 +283,7 @@ double ATM90E32::GetValueRegister(unsigned short registerRead)
 // these registers accumulate energy and are cleared after being read
 double ATM90E32::GetImportEnergy()
 {
-  unsigned short ienergyT = _comms.transact(_comms.SPI_TRANS::READ, APenergyT);
+  unsigned short ienergyT = GetValueRegister(APenergyT);
   return (double)ienergyT / 100 / 3200; // returns kWh
 }
 // unsigned short ienergyA = _comms.transact(_comms.SPI_TRANS::READ, APenergyA);
@@ -293,7 +293,7 @@ double ATM90E32::GetImportEnergy()
 // FORWARD REACTIVE ENERGY
 double ATM90E32::GetImportReactiveEnergy()
 {
-  unsigned short renergyT = _comms.transact(_comms.SPI_TRANS::READ, RPenergyT);
+  unsigned short renergyT = GetValueRegister(RPenergyT);
   return (double)renergyT / 100 / 3200; // returns kWh
 }
 // unsigned short renergyA = _comms.transact(_comms.SPI_TRANS::READ, RPenergyA);
@@ -303,7 +303,7 @@ double ATM90E32::GetImportReactiveEnergy()
 // APPARENT ENERGY
 double ATM90E32::GetImportApparentEnergy()
 {
-  unsigned short senergyT = _comms.transact(_comms.SPI_TRANS::READ, SAenergyT);
+  unsigned short senergyT = GetValueRegister(SAenergyT);
   return (double)senergyT / 100 / 3200; // returns kWh
 }
 // unsigned short senergyA = _comms.transact(_comms.SPI_TRANS::READ, SenergyA);
@@ -313,7 +313,7 @@ double ATM90E32::GetImportApparentEnergy()
 // REVERSE ACTIVE ENERGY
 double ATM90E32::GetExportEnergy()
 {
-  unsigned short eenergyT = _comms.transact(_comms.SPI_TRANS::READ, ANenergyT);
+  unsigned short eenergyT = GetValueRegister(ANenergyT);
   return (double)eenergyT / 100 / 3200; // returns kWh
 }
 // unsigned short eenergyA = _comms.transact(_comms.SPI_TRANS::READ, ANenergyA);
@@ -323,7 +323,7 @@ double ATM90E32::GetExportEnergy()
 // REVERSE REACTIVE ENERGY
 double ATM90E32::GetExportReactiveEnergy()
 {
-  unsigned short reenergyT = _comms.transact(_comms.SPI_TRANS::READ, RNenergyT);
+  unsigned short reenergyT = GetValueRegister(RNenergyT);
   return (double)reenergyT / 100 / 3200; // returns kWh
 }
 // unsigned short reenergyA = _comms.transact(_comms.SPI_TRANS::READ, RNenergyA);
