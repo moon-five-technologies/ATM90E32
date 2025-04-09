@@ -21,7 +21,7 @@ ATM90E32::~ATM90E32()
   // end
 }
 
-int ATM90E32::Read32Register(signed short regh_addr, signed short regl_addr)
+int ATM90E32::Read32Register(const unsigned short regh_addr, const unsigned short regl_addr)
 {
   int val, val_h, val_l;
   val_h = _comms.transact(_comms.SPI_TRANS::READ, regh_addr);
@@ -33,7 +33,7 @@ int ATM90E32::Read32Register(signed short regh_addr, signed short regl_addr)
   return (val);
 }
 
-double ATM90E32::CalculateVIOffset(unsigned short regh_addr, unsigned short regl_addr)
+uint16_t ATM90E32::CalculateVIOffset(const unsigned short regh_addr, const unsigned short regl_addr)
 {
   uint32_t raw_val = Read32Register(regh_addr, regl_addr);
   raw_val = raw_val >> 7;    // right shift 7 bits
@@ -45,7 +45,7 @@ double ATM90E32::CalculateVIOffset(unsigned short regh_addr, unsigned short regl
 // for getting the lower registers of energy and calculating the offset
 // should only be run when CT sensors are connected to the meter,
 // but not connected around wires
-double ATM90E32::CalculatePowerOffset(unsigned short regh_addr, unsigned short regl_addr)
+uint16_t ATM90E32::CalculatePowerOffset(const unsigned short regh_addr, const unsigned short regl_addr)
 {
   uint32_t raw_val = Read32Register(regh_addr, regl_addr);
   raw_val = (~raw_val) + 1;  // 2s compliment
@@ -55,7 +55,7 @@ double ATM90E32::CalculatePowerOffset(unsigned short regh_addr, unsigned short r
 
 // input the Voltage or Current register, and the actual value that it should be
 // actualVal can be from a calibration meter or known value from a power supply
-double ATM90E32::CalculateVIGain(unsigned short reg, unsigned short actualVal)
+uint16_t ATM90E32::CalculateVIGain(const unsigned short reg, const unsigned short actualVal)
 {
   unsigned short val, gain, gainReg;
   // sample the reading

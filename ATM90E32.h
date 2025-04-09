@@ -250,7 +250,7 @@ The MIT License (MIT)
 #define MMode0_HPFOff 1 << 11
 #define MMode0_Freq60Hz 1 << 12 // Set for 60Hz, unset for 50Hz
 
-// 60 Hz, reactive energy, all phase count towards sum
+// 60 Hz, reactive energy, all phase count towards sum, CT sensors
 #define MMode0_default_50Hz MMode0_EnPC | MMode0_EnPB | MMode0_EnPA | MMode0_CF2varh
 #define MMode0_default_60Hz MMode0_default_50Hz | MMode0_Freq60Hz
 
@@ -337,7 +337,7 @@ private:
 	atm90e32_calibration cal = default_cal;
 	Comms &_comms;
 
-	int Read32Register(signed short regh_addr, signed short regl_addr);
+	int Read32Register(const unsigned short regh_addr, const unsigned short regl_addr);
 	void applyCalibration();
 
 public:
@@ -349,9 +349,9 @@ public:
 	/* Initialization Functions */
 	void begin();
 
-	double CalculateVIOffset(unsigned short regh_addr, unsigned short regl_addr);
-	double CalculatePowerOffset(unsigned short regh_addr, unsigned short regl_addr);
-	double CalculateVIGain(unsigned short reg, unsigned short actualVal);
+	uint16_t CalculateVIOffset(const unsigned short regh_addr, const unsigned short regl_addr);
+	uint16_t CalculatePowerOffset(const unsigned short regh_addr, const unsigned short regl_addr);
+	uint16_t CalculateVIGain(const unsigned short reg, const unsigned short actualVal);
 	
 	void setCalibration(atm90e32_calibration &cal);
 	atm90e32_calibration getCalibration();
