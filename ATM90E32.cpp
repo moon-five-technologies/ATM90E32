@@ -82,6 +82,11 @@ uint16_t ATM90E32::CalculateVIGain(const unsigned short reg, const unsigned shor
       gainReg = IgainC;
 
   gain = _comms.transact(_comms.SPI_TRANS::READ, gainReg);
+  if (val == 0)
+  {
+    Serial.println("Error: Gain calculation failed, division by zero.");
+    return 0;
+  }
   gain = static_cast<uint16_t>((static_cast<unsigned int>(actualVal) * gain) / val);
 
   // // write new value to gain register
@@ -456,7 +461,31 @@ void ATM90E32::setCalibration(atm90e32_calibration &cal)
   applyCalibration();
 }
 
-atm90e32_calibration ATM90E32::getCalibration()
+void ATM90E32::readCalibration(atm90e32_calibration *cal)
 {
-  return cal;
+    cal->mmode0 = _comms.transact(_comms.SPI_TRANS::READ, MMode0);
+    cal->mmode1 = _comms.transact(_comms.SPI_TRANS::READ, MMode1);
+    
+    // Read channel A calibration registers
+    cal->meas_gain_a.ugain   = _comms.transact(_comms.SPI_TRANS::READ, UgainA);
+    cal->meas_gain_a.igain   = _comms.transact(_comms.SPI_TRANS::READ, IgainA);
+    cal->meas_offset_a.uoffset = _comms.transact(_comms.SPI_TRANS::READ, UoffsetA);
+    cal->meas_offset_a.ioffset = _comms.transact(_comms.SPI_TRANS::READ, IoffsetA);
+
+    // Read channel B calibration registers
+    cal->meas_gain_b.ugain   = _comms.transact(_comms.SPI_TRANS::READ, UgainB);
+    cal->meas_gain_b.igain   = _comms.transact(_comms.SPI_TRANS::READ, IgainB);
+    cal->meas_offset_b.uoffset = _comms.transact(_comms.SPI_TRANS::READ, UoffsetB);
+    cal->meas_offset_b.ioffset = _comms.transact(_comms.SPI_TRANS::READ, IoffsetB);
+
+    // Read channel C calibration registers
+    cal->meas_gain_c.ugain   = _comms.transact(_comms.SPI_TRANS::READ, UgainC);
+    cal->meas_gain_c.igain   = _comms.transact(_comms.SPI_TRANS::READ, IgainC);
+    cal->meas_offset_c.uoffset = _comms.transact(_comms.SPI_TRANS::READ, UoffsetC);
+    cal->meas_offset_c.ioffset = _comms.transact(_comms.SPI_TRANS::READ, IoffsetC);
+}
+
+void ATM90E32::getCalibration(atm90e32_calibration *cal)
+{
+  readCalibration(cal);
 }

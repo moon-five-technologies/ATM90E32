@@ -339,6 +339,7 @@ private:
 
 	int Read32Register(const unsigned short regh_addr, const unsigned short regl_addr);
 	void applyCalibration();
+	void readCalibration(atm90e32_calibration *cal);
 
 public:
 	/* Construct */
@@ -354,7 +355,7 @@ public:
 	uint16_t CalculateVIGain(const unsigned short reg, const unsigned short actualVal);
 	
 	void setCalibration(atm90e32_calibration &cal);
-	atm90e32_calibration getCalibration();
+	void getCalibration(atm90e32_calibration *cal);
 
 	/* Main Electrical Parameters (GET)*/
 	double GetLineVoltageA();
