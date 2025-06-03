@@ -288,7 +288,8 @@ struct atm90e32_calib_energy
 	unsigned short pqgain;
 	unsigned short phi;
 };
-struct atm90e32_calibration {
+struct atm90e32_calibration
+{
 	unsigned short mmode0;
 	unsigned short mmode1;
 	unsigned short pga_gain;
@@ -299,7 +300,6 @@ struct atm90e32_calibration {
 	atm90e32_calib_meas_offset meas_offset_b;
 	atm90e32_calib_meas_offset meas_offset_c;
 };
-
 
 const atm90e32_calibration default_cal = {
 	// DEFAULT CALIBRATION
@@ -341,6 +341,10 @@ private:
 	int Read32Register(const unsigned short regh_addr, const unsigned short regl_addr);
 	void applyCalibration();
 	void readCalibration(atm90e32_calibration *cal);
+	uint16_t ATM90E32::CalculateGain(atm90_chan chan, double actualVal,
+									 double (ATM90E32::*measureFunc)(atm90_chan),
+									 const unsigned short *gainMap,
+									 size_t gainMapSize, unsigned short lsb_val);
 
 public:
 	/* Construct */
@@ -353,8 +357,9 @@ public:
 
 	uint16_t CalculateVIOffset(const unsigned short regh_addr, const unsigned short regl_addr);
 	uint16_t CalculatePowerOffset(const unsigned short regh_addr, const unsigned short regl_addr);
-	uint16_t CalculateVIGain(const unsigned short reg, const unsigned short actualVal);
-	
+	uint16_t CalculateVIGain(atm90_chan chan, double actualVal, bool isVoltage);
+	uint16_t CalculateVGain(atm90_chan chan, double actualVal);
+	uint16_t CalculateUGain(atm90_chan chan, double actualVal);
 	void setCalibration(atm90e32_calibration &cal);
 	void getCalibration(atm90e32_calibration *cal);
 

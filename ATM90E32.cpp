@@ -16,6 +16,10 @@
 #include "ATM90E32.h"
 #include <stdint.h>
 
+// Replace previous mapping structures with simple constant arrays:
+static const unsigned short voltageGainMap[] = { UgainA, UgainB, UgainC };
+static const unsigned short currentGainMap[] = { IgainA, IgainB, IgainC };
+
 ATM90E32::~ATM90E32()
 {
   // end
@@ -53,75 +57,57 @@ uint16_t ATM90E32::CalculatePowerOffset(const unsigned short regh_addr, const un
   return uint16_t(offset);
 }
 
-// input the Voltage or Current register, and the actual value that it should be
-// actualVal can be from a calibration meter or known value from a power supply
-uint16_t ATM90E32::CalculateVIGain(const unsigned short reg, const unsigned short actualVal)
+// Helper function to calculate gain for voltage or current
+uint16_t ATM90E32::CalculateGain(atm90_chan chan, double actualVal, 
+                                 double (ATM90E32::*measureFunc)(atm90_chan), 
+                                 const unsigned short* gainMap, 
+                                 size_t gainMapSize, unsigned short lsb_val)
 {
-  unsigned short val = 0, gain, gainReg;
-  double val;
-  unsigned short lsb_val = 1;
-  // sample the reading
+  unsigned short gain;
+  double measuredVal = 0.0;
+
+  // Average 4 readings using the provided measurement function
   for (int i = 0; i < 4; i++)
   {
-    // read the register value
-    val += _comms.transact(_comms.SPI_TRANS::READ, reg);
-    // A new value takes as long as 16 cycles of 50 Hz to refresh
+    measuredVal += (this->*measureFunc)(chan);
     delay(320);
   }
+  measuredVal /= 4.0;
 
-  // TODO: The upstream code did not divide by 4, but why not??
-  val = val / 4;
-
-  // get value currently in gain register
-  if (reg == UrmsA)
+  // Check channel index and get gain register directly.
+  if ((unsigned int)chan >= gainMapSize)
   {
-    gainReg = UgainA;
-    lsb_val = 100;
+      Serial.println("Error: Invalid channel for CalculateGain.");
+      return 0;
   }
-  else if (reg == UrmsB)
-  {
-    gainReg = UgainB;
-    lsb_val = 100;
-  }
-  else if (reg == UrmsC)
-  {
-    gainReg = UgainC;
-    lsb_val = 100;
-  }
-  else if (reg == IrmsA)
-  {
-    gainReg = IgainA;
-    lsb_val = 1000;
-  }
-  else if (reg == IrmsB)
-  {
-    gainReg = IgainB;
-    lsb_val = 1000;
-  }
-  else if (reg == IrmsC)
-  {
-    gainReg = IgainC;
-    lsb_val = 1000; 
-  }
-  else
-  {
-    Serial.println("Error: Invalid register for CalculateVIGain.");
-    return 0;
-  }
+  unsigned short gainReg = gainMap[chan];
 
   gain = _comms.transact(_comms.SPI_TRANS::READ, gainReg);
-  if (val == 0)
+  if (measuredVal == 0)
   {
     Serial.println("Error: Gain calculation failed, division by zero.");
     return 0;
   }
-  val /= lsb_val; // convert to LSB value
-  gain = static_cast<uint16_t>((static_cast<unsigned int>(actualVal) * lsb_val * gain) / val);
 
-  // // write new value to gain register
-  // _comms.transact(_comms.SPI_TRANS::WRITE, gainReg, gain);
-
+  // Calculate new gain
+  gain = static_cast<uint16_t>((actualVal * lsb_val * gain) / measuredVal);
   return gain;
+}
+
+// input the channel and the actual voltage value that it should be
+uint16_t ATM90E32::CalculateVGain(atm90_chan chan, double actualVal)
+{
+  return CalculateGain(chan, actualVal, 
+                       &ATM90E32::GetLineVoltage,
+                       voltageGainMap, sizeof(voltageGainMap)/sizeof(voltageGainMap[0]), 100);
+}
+
+// input the channel and the actual current value that it should be
+uint16_t ATM90E32::CalculateUGain(atm90_chan chan, double actualVal)
+{
+  return CalculateGain(chan, actualVal, 
+                       &ATM90E32::GetLineCurrent,
+                       currentGainMap, sizeof(currentGainMap)/sizeof(currentGainMap[0]), 1000);
 }
 
 /* Parameters Functions*/
