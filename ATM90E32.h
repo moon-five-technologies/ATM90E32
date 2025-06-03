@@ -269,6 +269,7 @@ enum atm90_chan
 	ATM90_CHAN_A,
 	ATM90_CHAN_B,
 	ATM90_CHAN_C,
+	ATM90_CHAN_N, // Neutral channel
 };
 struct atm90e32_calib_meas_gain
 {
@@ -358,14 +359,18 @@ public:
 	void getCalibration(atm90e32_calibration *cal);
 
 	/* Main Electrical Parameters (GET)*/
-	double GetLineVoltageA();
-	double GetLineVoltageB();
-	double GetLineVoltageC();
+	double GetLineVoltage(atm90_chan chan);
 
-	double GetLineCurrentA();
-	double GetLineCurrentB();
-	double GetLineCurrentC();
-	double GetLineCurrentN();
+	double GetLineCurrent(atm90_chan chan);
+
+	double GetLineVoltageA() { return GetLineVoltage(ATM90_CHAN_A); }
+	double GetLineVoltageB() { return GetLineVoltage(ATM90_CHAN_B); }
+	double GetLineVoltageC() { return GetLineVoltage(ATM90_CHAN_C); }
+
+	double GetLineCurrentA() { return GetLineCurrent(ATM90_CHAN_A); }
+	double GetLineCurrentB() { return GetLineCurrent(ATM90_CHAN_B); }
+	double GetLineCurrentC() { return GetLineCurrent(ATM90_CHAN_C); }
+	double GetLineCurrentN() { return GetLineCurrent(ATM90_CHAN_N); }
 
 	double GetActivePowerA();
 	double GetActivePowerB();
