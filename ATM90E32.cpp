@@ -57,13 +57,17 @@ uint16_t ATM90E32::CalculatePowerOffset(const unsigned short regh_addr, const un
 // actualVal can be from a calibration meter or known value from a power supply
 uint16_t ATM90E32::CalculateVIGain(const unsigned short reg, const unsigned short actualVal)
 {
-  unsigned short val, gain, gainReg;
+  unsigned short val = 0, gain, gainReg;
+  double val;
   // sample the reading
-  val = _comms.transact(_comms.SPI_TRANS::READ, reg);
-  val += _comms.transact(_comms.SPI_TRANS::READ, reg);
-  val += _comms.transact(_comms.SPI_TRANS::READ, reg);
-  val += _comms.transact(_comms.SPI_TRANS::READ, reg);
-  
+  for (int i = 0; i < 4; i++)
+  {
+    // read the register value
+    val += _comms.transact(_comms.SPI_TRANS::READ, reg);
+    // A new value takes as long as 16 cycles of 50 Hz to refresh
+    delay(320);
+  }
+
   // TODO: The upstream code did not divide by 4, but why not??
   val = val / 4;
 
@@ -80,6 +84,10 @@ uint16_t ATM90E32::CalculateVIGain(const unsigned short reg, const unsigned shor
       gainReg = IgainB;
   else if (reg == IrmsC)
       gainReg = IgainC;
+  else {
+    Serial.println("Error: Invalid register for CalculateVIGain.");
+    return 0;
+  }
 
   gain = _comms.transact(_comms.SPI_TRANS::READ, gainReg);
   if (val == 0)
@@ -106,17 +114,20 @@ uint16_t ATM90E32::CalculateVIGain(const unsigned short reg, const unsigned shor
 double ATM90E32::GetLineVoltageA()
 {
   unsigned short voltage = GetValueRegister(UrmsA);
-  return (double)voltage / 100;
+  unsigned short voltage_lsb = GetValueRegister(UrmsALSB);
+  return (double)voltage / 100 + (double)voltage_lsb / 100 / 256;
 }
 double ATM90E32::GetLineVoltageB()
 {
   unsigned short voltage = GetValueRegister(UrmsB);
-  return (double)voltage / 100;
+  unsigned short voltage_lsb = GetValueRegister(UrmsBLSB);
+  return (double)voltage / 100 + (double)voltage_lsb / 100 / 256;
 }
 double ATM90E32::GetLineVoltageC()
 {
   unsigned short voltage = GetValueRegister(UrmsC);
-  return (double)voltage / 100;
+  unsigned short voltage_lsb = GetValueRegister(UrmsCLSB);
+  return (double)voltage / 100 + (double)voltage_lsb / 100 / 256;
 }
 
 // CURRENT
