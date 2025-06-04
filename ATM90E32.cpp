@@ -73,7 +73,7 @@ uint16_t ATM90E32::CalculatePowerOffset(const unsigned short regh_addr, const un
 uint16_t ATM90E32::CalculateGain(atm90_chan chan, double actualVal, 
                                  double (ATM90E32::*measureFunc)(atm90_chan), 
                                  const unsigned short* gainMap, 
-                                 size_t gainMapSize, unsigned short lsb_val)
+                                 size_t gainMapSize)
 {
   unsigned short gain;
   double measuredVal = 0.0;
@@ -102,7 +102,7 @@ uint16_t ATM90E32::CalculateGain(atm90_chan chan, double actualVal,
   }
 
   // Calculate new gain
-  gain = static_cast<uint16_t>((actualVal * lsb_val * gain) / measuredVal);
+  gain = static_cast<uint16_t>((actualVal * gain) / measuredVal);
   return gain;
 }
 
@@ -111,7 +111,7 @@ uint16_t ATM90E32::CalculateVGain(atm90_chan chan, double actualVal)
 {
   return CalculateGain(chan, actualVal, 
                        &ATM90E32::GetLineVoltage,
-                       voltageGainMap, sizeof(voltageGainMap)/sizeof(voltageGainMap[0]), 100);
+                       voltageGainMap, sizeof(voltageGainMap)/sizeof(voltageGainMap[0]));
 }
 
 // input the channel and the actual current value that it should be
@@ -119,7 +119,7 @@ uint16_t ATM90E32::CalculateUGain(atm90_chan chan, double actualVal)
 {
   return CalculateGain(chan, actualVal, 
                        &ATM90E32::GetLineCurrent,
-                       currentGainMap, sizeof(currentGainMap)/sizeof(currentGainMap[0]), 1000);
+                       currentGainMap, sizeof(currentGainMap)/sizeof(currentGainMap[0]));
 }
 
 /* Parameters Functions*/
