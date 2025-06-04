@@ -341,10 +341,10 @@ private:
 	int Read32Register(const unsigned short regh_addr, const unsigned short regl_addr);
 	void applyCalibration();
 	void readCalibration(atm90e32_calibration *cal);
-	uint16_t ATM90E32::CalculateGain(atm90_chan chan, double actualVal,
-									 double (ATM90E32::*measureFunc)(atm90_chan),
-									 const unsigned short *gainMap,
-									 size_t gainMapSize, unsigned short lsb_val);
+	uint16_t CalculateGain(atm90_chan chan, double actualVal,
+						   double (ATM90E32::*measureFunc)(atm90_chan),
+						   const unsigned short *gainMap,
+						   size_t gainMapSize, unsigned short lsb_val);
 
 public:
 	/* Construct */
