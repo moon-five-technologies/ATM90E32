@@ -40,14 +40,11 @@ int ATM90E32::Read32Register(const unsigned short regh_addr, const unsigned shor
 uint16_t ATM90E32::CalculateVIOffset(const unsigned short regh_addr, const unsigned short regl_addr)
 {
   uint32_t raw_val = 0;
-  printf("Sampling 4 times for offset calculation");
   for (int i = 0; i < 4; i++)
   {
-    printf(".");
     raw_val += Read32Register(regh_addr, regl_addr);
     if (i < 3) delay(320);
   }
-  printf("\n");
   raw_val /= 4;
   raw_val = raw_val >> 7;    // right shift 7 bits
   raw_val = (~raw_val) + 1;  // 2s compliment
@@ -61,14 +58,11 @@ uint16_t ATM90E32::CalculateVIOffset(const unsigned short regh_addr, const unsig
 uint16_t ATM90E32::CalculatePowerOffset(const unsigned short regh_addr, const unsigned short regl_addr)
 {
   uint32_t raw_val = 0;
-  printf("Sampling 4 times for power offset calculation");
   for (int i = 0; i < 4; i++)
   {
-    printf(".");
     raw_val += Read32Register(regh_addr, regl_addr);
     if (i < 3) delay(320);
   }
-  printf("\n");
   raw_val /= 4;
   raw_val = (~raw_val) + 1;  // 2s compliment
   uint16_t offset = raw_val; // keep lower 16 bits
