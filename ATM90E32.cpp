@@ -40,7 +40,7 @@ int ATM90E32::Read32Register(const unsigned short regh_addr, const unsigned shor
 uint16_t ATM90E32::CalculateVIOffset(const unsigned short regh_addr, const unsigned short regl_addr)
 {
   uint32_t raw_val = 0;
-  printf("Sampling 4 times for voltage offset calculation");
+  printf("Sampling 4 times for offset calculation");
   for (int i = 0; i < 4; i++)
   {
     printf(".");
