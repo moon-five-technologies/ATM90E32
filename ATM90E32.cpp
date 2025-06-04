@@ -39,7 +39,16 @@ int ATM90E32::Read32Register(const unsigned short regh_addr, const unsigned shor
 
 uint16_t ATM90E32::CalculateVIOffset(const unsigned short regh_addr, const unsigned short regl_addr)
 {
-  uint32_t raw_val = Read32Register(regh_addr, regl_addr);
+  uint32_t raw_val = 0;
+  printf("Sampling 4 times for voltage offset calculation");
+  for (int i = 0; i < 4; i++)
+  {
+    printf(".");
+    raw_val += Read32Register(regh_addr, regl_addr);
+    if (i < 3) delay(320);
+  }
+  printf("\n");
+  raw_val /= 4;
   raw_val = raw_val >> 7;    // right shift 7 bits
   raw_val = (~raw_val) + 1;  // 2s compliment
   uint16_t offset = raw_val; // keep lower 16 bits
@@ -51,7 +60,16 @@ uint16_t ATM90E32::CalculateVIOffset(const unsigned short regh_addr, const unsig
 // but not connected around wires
 uint16_t ATM90E32::CalculatePowerOffset(const unsigned short regh_addr, const unsigned short regl_addr)
 {
-  uint32_t raw_val = Read32Register(regh_addr, regl_addr);
+  uint32_t raw_val = 0;
+  printf("Sampling 4 times for power offset calculation");
+  for (int i = 0; i < 4; i++)
+  {
+    printf(".");
+    raw_val += Read32Register(regh_addr, regl_addr);
+    if (i < 3) delay(320);
+  }
+  printf("\n");
+  raw_val /= 4;
   raw_val = (~raw_val) + 1;  // 2s compliment
   uint16_t offset = raw_val; // keep lower 16 bits
   return uint16_t(offset);
@@ -70,7 +88,7 @@ uint16_t ATM90E32::CalculateGain(atm90_chan chan, double actualVal,
   for (int i = 0; i < 4; i++)
   {
     measuredVal += (this->*measureFunc)(chan);
-    delay(320);
+    if (i < 3) delay(320);
   }
   measuredVal /= 4.0;
 
