@@ -144,9 +144,15 @@ double ATM90E32::GetLineVoltage(atm90_chan chan)
         default:
             return 0.0;
     }
+    // LSB = .01V
     unsigned short voltage = GetValueRegister(reg);
+    // The upper 8-bits of the LSB register are used to store the next 8 bits 
+    // of the voltage value.
     unsigned short voltage_lsb = GetValueRegister(reg_lsb);
-    return (double)voltage / 100 + (double)voltage_lsb / 100 / 256;
+    // Combine the upper 16 bits of the voltage and the lower 8 bits from the
+    // LSB register to form a 24-bit value.
+    uint32_t combined = (uint32_t(voltage) << 8) | (voltage_lsb >> 8);
+    return (double)combined / 25600.0; // 100 * 256
 }
 
 double ATM90E32::GetLineCurrent(atm90_chan chan)
