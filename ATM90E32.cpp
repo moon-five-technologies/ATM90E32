@@ -148,7 +148,7 @@ double ATM90E32::GetLineVoltage(atm90_chan chan)
         default:
             return 0.0;
     }
-    // LSB = .01V
+    // LSB = 0.01V
     unsigned short voltage = GetValueRegister(reg);
     // The upper 8-bits of the LSB register are used to store the next 8 bits 
     // of the voltage value.
@@ -161,21 +161,31 @@ double ATM90E32::GetLineVoltage(atm90_chan chan)
 
 double ATM90E32::GetLineCurrent(atm90_chan chan)
 {
-    unsigned short reg = 0;
+    unsigned short reg = 0, reg_lsb = 0;
     switch (chan) {
         case ATM90_CHAN_A:
-            reg = IrmsA; break;
+            reg = IrmsA; reg_lsb = IrmsALSB; break;
         case ATM90_CHAN_B:
-            reg = IrmsB; break;
+            reg = IrmsB; reg_lsb = IrmsBLSB; break;
         case ATM90_CHAN_C:
-            reg = IrmsC; break;
+            reg = IrmsC; reg_lsb = IrmsCLSB; break;
         case ATM90_CHAN_N:
             reg = IrmsN; break;
         default:
             return 0.0;
     }
+    // LSB = 0.001A
     unsigned short current = GetValueRegister(reg);
-    return (double)current / 1000;
+    uint32_t current_combined = (uint32_t(current) << 8);
+    printf("Current: 0x%04X\n", current);
+    if (reg_lsb != 0)
+    {
+      unsigned short current_lsb = GetValueRegister(reg_lsb);
+      current_combined |= (current_lsb >> 8);
+
+      printf("Current LSB: 0x%04X\n", current_lsb);
+    }
+    return (double)current_combined / 256000.0; // 1000 * 256 (mA shifted 8 bits)
 }
 
 // ACTIVE POWER
