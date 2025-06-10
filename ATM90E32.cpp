@@ -49,9 +49,12 @@ uint16_t ATM90E32::CalculateVIOffset(const unsigned short regh_addr, const unsig
   raw_val = raw_val >> 7;    // right shift 7 bits
   raw_val = (~raw_val) + 1;  // 2s compliment
   // Check if the value is within the valid range for offset (truncating to 16
-  // bits should not lose information if the offset is small enough).
+  // bits should not lose information).
   if (raw_val < 0xFFFF0000)
+  {
+    Serial.println("Warning: Calculated offset is too large, disabling.");
     return 0;
+  }
   uint16_t offset = raw_val; // keep lower 16 bits
   return uint16_t(offset);
 }
