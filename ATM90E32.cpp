@@ -16,6 +16,10 @@
 #include "ATM90E32.h"
 #include <stdint.h>
 
+// Replace previous mapping structures with simple constant arrays:
+static const unsigned short voltageGainMap[] = { UgainA, UgainB, UgainC };
+static const unsigned short currentGainMap[] = { IgainA, IgainB, IgainC };
+
 ATM90E32::~ATM90E32()
 {
   // end
@@ -35,9 +39,22 @@ int ATM90E32::Read32Register(const unsigned short regh_addr, const unsigned shor
 
 uint16_t ATM90E32::CalculateVIOffset(const unsigned short regh_addr, const unsigned short regl_addr)
 {
-  uint32_t raw_val = Read32Register(regh_addr, regl_addr);
+  uint32_t raw_val = 0;
+  for (int i = 0; i < 4; i++)
+  {
+    raw_val += Read32Register(regh_addr, regl_addr);
+    if (i < 3) delay(320);
+  }
+  raw_val /= 4;
   raw_val = raw_val >> 7;    // right shift 7 bits
   raw_val = (~raw_val) + 1;  // 2s compliment
+  // Check if the value is within the valid range for offset (truncating to 16
+  // bits should not lose information).
+  if (raw_val < 0xFFFF0000)
+  {
+    Serial.println("Warning: Calculated offset is too large, disabling.");
+    return 0;
+  }
   uint16_t offset = raw_val; // keep lower 16 bits
   return uint16_t(offset);
 }
@@ -47,52 +64,69 @@ uint16_t ATM90E32::CalculateVIOffset(const unsigned short regh_addr, const unsig
 // but not connected around wires
 uint16_t ATM90E32::CalculatePowerOffset(const unsigned short regh_addr, const unsigned short regl_addr)
 {
-  uint32_t raw_val = Read32Register(regh_addr, regl_addr);
+  uint32_t raw_val = 0;
+  for (int i = 0; i < 4; i++)
+  {
+    raw_val += Read32Register(regh_addr, regl_addr);
+    if (i < 3) delay(320);
+  }
+  raw_val /= 4;
   raw_val = (~raw_val) + 1;  // 2s compliment
   uint16_t offset = raw_val; // keep lower 16 bits
   return uint16_t(offset);
 }
 
-// input the Voltage or Current register, and the actual value that it should be
-// actualVal can be from a calibration meter or known value from a power supply
-uint16_t ATM90E32::CalculateVIGain(const unsigned short reg, const unsigned short actualVal)
+// Helper function to calculate gain for voltage or current
+uint16_t ATM90E32::CalculateGain(atm90_chan chan, double actualVal, 
+                                 double (ATM90E32::*measureFunc)(atm90_chan), 
+                                 const unsigned short* gainMap, 
+                                 size_t gainMapSize)
 {
-  unsigned short val, gain, gainReg;
-  // sample the reading
-  val = _comms.transact(_comms.SPI_TRANS::READ, reg);
-  val += _comms.transact(_comms.SPI_TRANS::READ, reg);
-  val += _comms.transact(_comms.SPI_TRANS::READ, reg);
-  val += _comms.transact(_comms.SPI_TRANS::READ, reg);
-  
-  // TODO: The upstream code did not divide by 4, but why not??
-  val = val / 4;
+  unsigned short gain;
+  double measuredVal = 0.0;
 
-  // get value currently in gain register
-  if (reg == UrmsA)
-      gainReg = UgainA;
-  else if (reg == UrmsB)
-      gainReg = UgainB;
-  else if (reg == UrmsC)
-      gainReg = UgainC;
-  else if (reg == IrmsA)
-      gainReg = IgainA;
-  else if (reg == IrmsB)
-      gainReg = IgainB;
-  else if (reg == IrmsC)
-      gainReg = IgainC;
+  // Average 4 readings using the provided measurement function
+  for (int i = 0; i < 4; i++)
+  {
+    measuredVal += (this->*measureFunc)(chan);
+    if (i < 3) delay(320);
+  }
+  measuredVal /= 4.0;
+
+  // Check channel index and get gain register directly.
+  if ((unsigned int)chan >= gainMapSize)
+  {
+      Serial.println("Error: Invalid channel for CalculateGain.");
+      return 0;
+  }
+  unsigned short gainReg = gainMap[chan];
 
   gain = _comms.transact(_comms.SPI_TRANS::READ, gainReg);
-  if (val == 0)
+  if (measuredVal == 0)
   {
     Serial.println("Error: Gain calculation failed, division by zero.");
     return 0;
   }
-  gain = static_cast<uint16_t>((static_cast<unsigned int>(actualVal) * gain) / val);
 
-  // // write new value to gain register
-  // _comms.transact(_comms.SPI_TRANS::WRITE, gainReg, gain);
-
+  // Calculate new gain
+  gain = static_cast<uint16_t>((actualVal * gain) / measuredVal);
   return gain;
+}
+
+// input the channel and the actual voltage value that it should be
+uint16_t ATM90E32::CalculateVGain(atm90_chan chan, double actualVal)
+{
+  return CalculateGain(chan, actualVal, 
+                       &ATM90E32::GetLineVoltage,
+                       voltageGainMap, sizeof(voltageGainMap)/sizeof(voltageGainMap[0]));
+}
+
+// input the channel and the actual current value that it should be
+uint16_t ATM90E32::CalculateUGain(atm90_chan chan, double actualVal)
+{
+  return CalculateGain(chan, actualVal, 
+                       &ATM90E32::GetLineCurrent,
+                       currentGainMap, sizeof(currentGainMap)/sizeof(currentGainMap[0]));
 }
 
 /* Parameters Functions*/
@@ -103,43 +137,58 @@ uint16_t ATM90E32::CalculateVIGain(const unsigned short reg, const unsigned shor
 
 */
 // VOLTAGE
-double ATM90E32::GetLineVoltageA()
+
+double ATM90E32::GetLineVoltage(atm90_chan chan)
 {
-  unsigned short voltage = GetValueRegister(UrmsA);
-  return (double)voltage / 100;
-}
-double ATM90E32::GetLineVoltageB()
-{
-  unsigned short voltage = GetValueRegister(UrmsB);
-  return (double)voltage / 100;
-}
-double ATM90E32::GetLineVoltageC()
-{
-  unsigned short voltage = GetValueRegister(UrmsC);
-  return (double)voltage / 100;
+    unsigned short reg = 0, reg_lsb = 0;
+    switch (chan) {
+        case ATM90_CHAN_A:
+            reg = UrmsA; reg_lsb = UrmsALSB; break;
+        case ATM90_CHAN_B:
+            reg = UrmsB; reg_lsb = UrmsBLSB; break;
+        case ATM90_CHAN_C:
+            reg = UrmsC; reg_lsb = UrmsCLSB; break;
+        default:
+            return 0.0;
+    }
+    // LSB = 0.01V
+    unsigned short voltage = GetValueRegister(reg);
+    // The upper 8-bits of the LSB register are used to store the next 8 bits 
+    // of the voltage value.
+    unsigned short voltage_lsb = GetValueRegister(reg_lsb);
+    // Combine the upper 16 bits of the voltage and the lower 8 bits from the
+    // LSB register to form a 24-bit value.
+    uint32_t combined = (uint32_t(voltage) << 8) | (voltage_lsb >> 8);
+    return (double)combined / 25600.0; // 100 * 256
 }
 
-// CURRENT
-double ATM90E32::GetLineCurrentA()
+double ATM90E32::GetLineCurrent(atm90_chan chan)
 {
-  unsigned short current = GetValueRegister(IrmsA);
-  return (double)current / 1000;
-}
-double ATM90E32::GetLineCurrentB()
-{
-  unsigned short current = GetValueRegister(IrmsB);
-  return (double)current / 1000;
-}
-double ATM90E32::GetLineCurrentC()
-{
-  unsigned short current = GetValueRegister(IrmsC);
-  return (double)current / 1000;
-}
+    unsigned short reg = 0, reg_lsb = 0;
+    switch (chan) {
+        case ATM90_CHAN_A:
+            reg = IrmsA; reg_lsb = IrmsALSB; break;
+        case ATM90_CHAN_B:
+            reg = IrmsB; reg_lsb = IrmsBLSB; break;
+        case ATM90_CHAN_C:
+            reg = IrmsC; reg_lsb = IrmsCLSB; break;
+        case ATM90_CHAN_N:
+            reg = IrmsN; break;
+        default:
+            return 0.0;
+    }
+    // LSB = 0.001A
+    unsigned short current = GetValueRegister(reg);
+    uint32_t current_combined = (uint32_t(current) << 8);
+    printf("Current: 0x%04X\n", current);
+    if (reg_lsb != 0)
+    {
+      unsigned short current_lsb = GetValueRegister(reg_lsb);
+      current_combined |= (current_lsb >> 8);
 
-double ATM90E32::GetLineCurrentN()
-{
-  unsigned short current = GetValueRegister(IrmsN);
-  return (double)current / 1000;
+      printf("Current LSB: 0x%04X\n", current_lsb);
+    }
+    return (double)current_combined / 256000.0; // 1000 * 256 (mA shifted 8 bits)
 }
 
 // ACTIVE POWER
@@ -405,16 +454,16 @@ void ATM90E32::applyCalibration()
   _comms.transact(_comms.SPI_TRANS::WRITE, ZXConfig, 0xD654);       // 07 ZX2, ZX1, ZX0 pin config - set to current channels, all polarity
 
   // Set metering config values (CONFIG)
-  _comms.transact(_comms.SPI_TRANS::WRITE, PLconstH, 0x0861);  // 31 PL Constant MSB (default) - Meter Constant = 3200 - PL Constant = 140625000
-  _comms.transact(_comms.SPI_TRANS::WRITE, PLconstL, 0xC468);  // 32 PL Constant LSB (default) - this is 4C68 in the application note, which is incorrect
+  _comms.transact(_comms.SPI_TRANS::WRITE, PLconstH, 0x0861);   // 31 PL Constant MSB (default) - Meter Constant = 3200 - PL Constant = 140625000
+  _comms.transact(_comms.SPI_TRANS::WRITE, PLconstL, 0xC468);   // 32 PL Constant LSB (default) - this is 4C68 in the application note, which is incorrect
   _comms.transact(_comms.SPI_TRANS::WRITE, MMode0, cal.mmode0); // 33 Mode Config (frequency set in main program)
-  _comms.transact(_comms.SPI_TRANS::WRITE, MMode1, cal.mmode1);  // 34 PGA Gain Configuration for Current Channels - 0x002A (x4) // 0x0015 (x2) // 0x0000 (1x)
-  _comms.transact(_comms.SPI_TRANS::WRITE, PStartTh, 0x1D4C);  // 35 All phase Active Startup Power Threshold - 50% of startup current = 0.02A/0.00032 = 7500
-  _comms.transact(_comms.SPI_TRANS::WRITE, QStartTh, 0x1D4C);  // 36 All phase Reactive Startup Power Threshold
-  _comms.transact(_comms.SPI_TRANS::WRITE, SStartTh, 0x1D4C);  // 37 All phase Apparent Startup Power Threshold
-  _comms.transact(_comms.SPI_TRANS::WRITE, PPhaseTh, 0x02EE);  // 38 Each phase Active Phase Threshold = 10% of startup current = 0.002A/0.00032 = 750
-  _comms.transact(_comms.SPI_TRANS::WRITE, QPhaseTh, 0x02EE);  // 39 Each phase Reactive Phase Threshold
-  _comms.transact(_comms.SPI_TRANS::WRITE, SPhaseTh, 0x02EE);  // 3A Each phase Apparent Phase Threshold
+  _comms.transact(_comms.SPI_TRANS::WRITE, MMode1, cal.mmode1); // 34 PGA Gain Configuration for Current Channels - 0x002A (x4) // 0x0015 (x2) // 0x0000 (1x)
+  _comms.transact(_comms.SPI_TRANS::WRITE, PStartTh, 0x1D4C);   // 35 All phase Active Startup Power Threshold - 50% of startup current = 0.02A/0.00032 = 7500
+  _comms.transact(_comms.SPI_TRANS::WRITE, QStartTh, 0x1D4C);   // 36 All phase Reactive Startup Power Threshold
+  _comms.transact(_comms.SPI_TRANS::WRITE, SStartTh, 0x1D4C);   // 37 All phase Apparent Startup Power Threshold
+  _comms.transact(_comms.SPI_TRANS::WRITE, PPhaseTh, 0x02EE);   // 38 Each phase Active Phase Threshold = 10% of startup current = 0.002A/0.00032 = 750
+  _comms.transact(_comms.SPI_TRANS::WRITE, QPhaseTh, 0x02EE);   // 39 Each phase Reactive Phase Threshold
+  _comms.transact(_comms.SPI_TRANS::WRITE, SPhaseTh, 0x02EE);   // 3A Each phase Apparent Phase Threshold
 
   // Set metering calibration values (CALIBRATION)
   _comms.transact(_comms.SPI_TRANS::WRITE, PQGainA, 0x0000);  // 47 Line calibration gain
@@ -439,16 +488,16 @@ void ATM90E32::applyCalibration()
   _comms.transact(_comms.SPI_TRANS::WRITE, PGainCF, 0x0000);   // 56 C Fund. active power gain
 
   // Set measurement calibration values (ADJUST)
-  _comms.transact(_comms.SPI_TRANS::WRITE, UgainA, cal.meas_gain_a.ugain);   // 61 A Voltage rms gain
-  _comms.transact(_comms.SPI_TRANS::WRITE, IgainA, cal.meas_gain_a.igain);  // 62 A line current gain
+  _comms.transact(_comms.SPI_TRANS::WRITE, UgainA, cal.meas_gain_a.ugain);       // 61 A Voltage rms gain
+  _comms.transact(_comms.SPI_TRANS::WRITE, IgainA, cal.meas_gain_a.igain);       // 62 A line current gain
   _comms.transact(_comms.SPI_TRANS::WRITE, UoffsetA, cal.meas_offset_a.uoffset); // 63 A Voltage offset - 61A8
   _comms.transact(_comms.SPI_TRANS::WRITE, IoffsetA, cal.meas_offset_a.ioffset); // 64 A line current offset - FE60
-  _comms.transact(_comms.SPI_TRANS::WRITE, UgainB, cal.meas_gain_b.ugain);   // 65 B Voltage rms gain
-  _comms.transact(_comms.SPI_TRANS::WRITE, IgainB, cal.meas_gain_b.igain);  // 66 B line current gain
+  _comms.transact(_comms.SPI_TRANS::WRITE, UgainB, cal.meas_gain_b.ugain);       // 65 B Voltage rms gain
+  _comms.transact(_comms.SPI_TRANS::WRITE, IgainB, cal.meas_gain_b.igain);       // 66 B line current gain
   _comms.transact(_comms.SPI_TRANS::WRITE, UoffsetB, cal.meas_offset_b.uoffset); // 67 B Voltage offset - 1D4C
   _comms.transact(_comms.SPI_TRANS::WRITE, IoffsetB, cal.meas_offset_b.ioffset); // 68 B line current offset - FE60
-  _comms.transact(_comms.SPI_TRANS::WRITE, UgainC, cal.meas_gain_c.ugain);   // 69 C Voltage rms gain
-  _comms.transact(_comms.SPI_TRANS::WRITE, IgainC, cal.meas_gain_c.igain);  // 6A C line current gain
+  _comms.transact(_comms.SPI_TRANS::WRITE, UgainC, cal.meas_gain_c.ugain);       // 69 C Voltage rms gain
+  _comms.transact(_comms.SPI_TRANS::WRITE, IgainC, cal.meas_gain_c.igain);       // 6A C line current gain
   _comms.transact(_comms.SPI_TRANS::WRITE, UoffsetC, cal.meas_offset_c.uoffset); // 6B C Voltage offset - 1D4C
   _comms.transact(_comms.SPI_TRANS::WRITE, IoffsetC, cal.meas_offset_c.ioffset); // 6C C line current offset
 
@@ -463,26 +512,26 @@ void ATM90E32::setCalibration(atm90e32_calibration &cal)
 
 void ATM90E32::readCalibration(atm90e32_calibration *cal)
 {
-    cal->mmode0 = _comms.transact(_comms.SPI_TRANS::READ, MMode0);
-    cal->mmode1 = _comms.transact(_comms.SPI_TRANS::READ, MMode1);
-    
-    // Read channel A calibration registers
-    cal->meas_gain_a.ugain   = _comms.transact(_comms.SPI_TRANS::READ, UgainA);
-    cal->meas_gain_a.igain   = _comms.transact(_comms.SPI_TRANS::READ, IgainA);
-    cal->meas_offset_a.uoffset = _comms.transact(_comms.SPI_TRANS::READ, UoffsetA);
-    cal->meas_offset_a.ioffset = _comms.transact(_comms.SPI_TRANS::READ, IoffsetA);
+  cal->mmode0 = _comms.transact(_comms.SPI_TRANS::READ, MMode0);
+  cal->mmode1 = _comms.transact(_comms.SPI_TRANS::READ, MMode1);
 
-    // Read channel B calibration registers
-    cal->meas_gain_b.ugain   = _comms.transact(_comms.SPI_TRANS::READ, UgainB);
-    cal->meas_gain_b.igain   = _comms.transact(_comms.SPI_TRANS::READ, IgainB);
-    cal->meas_offset_b.uoffset = _comms.transact(_comms.SPI_TRANS::READ, UoffsetB);
-    cal->meas_offset_b.ioffset = _comms.transact(_comms.SPI_TRANS::READ, IoffsetB);
+  // Read channel A calibration registers
+  cal->meas_gain_a.ugain = _comms.transact(_comms.SPI_TRANS::READ, UgainA);
+  cal->meas_gain_a.igain = _comms.transact(_comms.SPI_TRANS::READ, IgainA);
+  cal->meas_offset_a.uoffset = _comms.transact(_comms.SPI_TRANS::READ, UoffsetA);
+  cal->meas_offset_a.ioffset = _comms.transact(_comms.SPI_TRANS::READ, IoffsetA);
 
-    // Read channel C calibration registers
-    cal->meas_gain_c.ugain   = _comms.transact(_comms.SPI_TRANS::READ, UgainC);
-    cal->meas_gain_c.igain   = _comms.transact(_comms.SPI_TRANS::READ, IgainC);
-    cal->meas_offset_c.uoffset = _comms.transact(_comms.SPI_TRANS::READ, UoffsetC);
-    cal->meas_offset_c.ioffset = _comms.transact(_comms.SPI_TRANS::READ, IoffsetC);
+  // Read channel B calibration registers
+  cal->meas_gain_b.ugain = _comms.transact(_comms.SPI_TRANS::READ, UgainB);
+  cal->meas_gain_b.igain = _comms.transact(_comms.SPI_TRANS::READ, IgainB);
+  cal->meas_offset_b.uoffset = _comms.transact(_comms.SPI_TRANS::READ, UoffsetB);
+  cal->meas_offset_b.ioffset = _comms.transact(_comms.SPI_TRANS::READ, IoffsetB);
+
+  // Read channel C calibration registers
+  cal->meas_gain_c.ugain = _comms.transact(_comms.SPI_TRANS::READ, UgainC);
+  cal->meas_gain_c.igain = _comms.transact(_comms.SPI_TRANS::READ, IgainC);
+  cal->meas_offset_c.uoffset = _comms.transact(_comms.SPI_TRANS::READ, UoffsetC);
+  cal->meas_offset_c.ioffset = _comms.transact(_comms.SPI_TRANS::READ, IoffsetC);
 }
 
 void ATM90E32::getCalibration(atm90e32_calibration *cal)
