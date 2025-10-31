@@ -288,11 +288,21 @@ struct atm90e32_calib_energy
 	unsigned short pqgain;
 	unsigned short phi;
 };
-struct atm90e32_calibration
-{
+// gain_div is the only field that is not used in the ATM90E32 registers.
+// It is used to increase the measurement range of the voltage and current
+// by dividing the measured values by a constant. This is useful for high
+// voltage/current applications where the measured values may exceed the
+// maximum register value. It is used during calibration (to modify the
+// stored gain calibration values) as well as during measurement (to scale
+// the measured values).
+// It is globally applied to all voltage/current measurements, but could be
+// modified to be per-channel if needed.
+
+struct atm90e32_calibration {
 	unsigned short mmode0;
 	unsigned short mmode1;
 	unsigned short pga_gain;
+	atm90e32_calib_meas_gain gain_div;  // Divider for voltage/current
 	atm90e32_calib_meas_gain meas_gain_a;
 	atm90e32_calib_meas_gain meas_gain_b;
 	atm90e32_calib_meas_gain meas_gain_c;
@@ -306,6 +316,10 @@ const atm90e32_calibration default_cal = {
 	.mmode0 = MMode0_default_60Hz,
 	.mmode1 = MMode1_default,
 	.pga_gain = PGA_GAIN_1,
+	.gain_div = {
+		.ugain = 1,
+		.igain = 1,
+	},
 	.meas_gain_a = {
 		.ugain = UGAIN_DEFAULT,
 		.igain = IGAIN_DEFAULT,
@@ -358,7 +372,7 @@ public:
 	uint16_t CalculateVIOffset(const unsigned short regh_addr, const unsigned short regl_addr);
 	uint16_t CalculatePowerOffset(const unsigned short regh_addr, const unsigned short regl_addr);
 	uint16_t CalculateVGain(atm90_chan chan, double actualVal);
-	uint16_t CalculateUGain(atm90_chan chan, double actualVal);
+	uint16_t CalculateIGain(atm90_chan chan, double actualVal);
 	void setCalibration(atm90e32_calibration &cal);
 	void getCalibration(atm90e32_calibration *cal);
 
