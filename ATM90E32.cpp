@@ -109,8 +109,8 @@ uint16_t ATM90E32::CalculateGain(atm90_chan chan, double actualVal,
   }
 
   // Calculate new gain
-  gain = static_cast<uint16_t>((actualVal * gain) / measuredVal);
-  return gain;
+  gain = static_cast<uint16_t>((static_cast<unsigned int>(actualVal) * gain) / measuredVal);
+  return gain / cal.gain_div.igain; // return gain divided by the gain_div.igain
 }
 
 // input the channel and the actual voltage value that it should be
@@ -159,7 +159,7 @@ double ATM90E32::GetLineVoltage(atm90_chan chan)
     // Combine the upper 16 bits of the voltage and the lower 8 bits from the
     // LSB register to form a 24-bit value.
     uint32_t combined = (uint32_t(voltage) << 8) | (voltage_lsb >> 8);
-    return (double)combined / 25600.0; // 100 * 256
+    return (double)combined / 25600.0 * cal.gain_div.ugain; // 100 * 256
 }
 
 double ATM90E32::GetLineCurrent(atm90_chan chan)
@@ -180,6 +180,7 @@ double ATM90E32::GetLineCurrent(atm90_chan chan)
     // LSB = 0.001A
     unsigned short current = GetValueRegister(reg);
     uint32_t current_combined = (uint32_t(current) << 8);
+    // TODO: Remove printfs
     printf("Current: 0x%04X\n", current);
     if (reg_lsb != 0)
     {
@@ -188,7 +189,7 @@ double ATM90E32::GetLineCurrent(atm90_chan chan)
 
       printf("Current LSB: 0x%04X\n", current_lsb);
     }
-    return (double)current_combined / 256000.0; // 1000 * 256 (mA shifted 8 bits)
+    return (double)current_combined / 256000.0 * cal.gain_div.ugain; // 1000 * 256 (mA shifted 8 bits)
 }
 
 // ACTIVE POWER
