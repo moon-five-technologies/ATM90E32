@@ -372,7 +372,7 @@ public:
 	uint16_t CalculateVIOffset(const unsigned short regh_addr, const unsigned short regl_addr);
 	uint16_t CalculatePowerOffset(const unsigned short regh_addr, const unsigned short regl_addr);
 	uint16_t CalculateVGain(atm90_chan chan, double actualVal);
-	uint16_t CalculateUGain(atm90_chan chan, double actualVal);
+	uint16_t CalculateIGain(atm90_chan chan, double actualVal);
 	void setCalibration(atm90e32_calibration &cal);
 	void getCalibration(atm90e32_calibration *cal);
 
