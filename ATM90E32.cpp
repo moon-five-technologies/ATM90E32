@@ -184,14 +184,11 @@ double ATM90E32::GetLineCurrent(atm90_chan chan)
     // LSB = 0.001A
     unsigned short current = GetValueRegister(reg);
     uint32_t current_combined = (uint32_t(current) << 8);
-    // TODO: Remove printfs
-    printf("Current: 0x%04X\n", current);
+
     if (reg_lsb != 0)
     {
       unsigned short current_lsb = GetValueRegister(reg_lsb);
       current_combined |= (current_lsb >> 8);
-
-      printf("Current LSB: 0x%04X\n", current_lsb);
     }
     return (double)current_combined / 256000.0 * cal.gain_div.igain; // 1000 * 256 (mA shifted 8 bits)
 }
