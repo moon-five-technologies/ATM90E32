@@ -109,28 +109,28 @@ uint16_t ATM90E32::CalculateGain(atm90_chan chan, double actualVal,
   }
 
   // Calculate new gain
-  gain = static_cast<uint16_t>((static_cast<unsigned int>(actualVal) * gain) / measuredVal);
+  gain = static_cast<uint16_t>((actualVal * static_cast<double>(gain)) / measuredVal);
   return gain; // return raw gain, not yet compensated by the gain_div.igain
 }
 
-// input the channel and the actual voltage value that it should be
 uint16_t ATM90E32::CalculateVGain(atm90_chan chan, double actualVal)
 {
-  return CalculateGain(chan, actualVal, 
-                       &ATM90E32::GetLineVoltage,
-                       voltageGainMap,
-                       sizeof(voltageGainMap)/sizeof(voltageGainMap[0])
-                      ) / cal.gain_div.ugain;
+  return CalculateGain(
+    chan, actualVal, 
+    &ATM90E32::GetLineVoltage,
+    voltageGainMap,
+    sizeof(voltageGainMap)/sizeof(voltageGainMap[0])
+  ) / cal.gain_div.ugain;
 }
 
-// input the channel and the actual current value that it should be
 uint16_t ATM90E32::CalculateIGain(atm90_chan chan, double actualVal)
 {
-  return CalculateGain(chan, actualVal, 
-                       &ATM90E32::GetLineCurrent,
-                       currentGainMap,
-                       sizeof(currentGainMap)/sizeof(currentGainMap[0])
-                      ) / cal.gain_div.igain;
+  return CalculateGain(
+    chan, actualVal, 
+    &ATM90E32::GetLineCurrent,
+    currentGainMap,
+    sizeof(currentGainMap)/sizeof(currentGainMap[0])
+    ) / cal.gain_div.igain;
 }
 
 /* Parameters Functions*/
@@ -147,11 +147,14 @@ double ATM90E32::GetLineVoltage(atm90_chan chan)
     unsigned short reg = 0, reg_lsb = 0;
     switch (chan) {
         case ATM90_CHAN_A:
-            reg = UrmsA; reg_lsb = UrmsALSB; break;
+            reg = UrmsA; reg_lsb = UrmsALSB;
+            break;
         case ATM90_CHAN_B:
-            reg = UrmsB; reg_lsb = UrmsBLSB; break;
+            reg = UrmsB; reg_lsb = UrmsBLSB;
+            break;
         case ATM90_CHAN_C:
-            reg = UrmsC; reg_lsb = UrmsCLSB; break;
+            reg = UrmsC; reg_lsb = UrmsCLSB;
+            break;
         default:
             return 0.0;
     }
@@ -163,7 +166,10 @@ double ATM90E32::GetLineVoltage(atm90_chan chan)
     // Combine the upper 16 bits of the voltage and the lower 8 bits from the
     // LSB register to form a 24-bit value.
     uint32_t combined = (uint32_t(voltage) << 8) | (voltage_lsb >> 8);
-    return (double)combined / 25600.0 * cal.gain_div.ugain; // 100 * 256
+    // Stored in units of 0.01V, so divide by 100 to get volts, but was then 
+    // shifted left by 8 bits, so to get volts we need to divide by 100 and 256
+    // (25600).
+    return (double)combined / 25600.0 * cal.gain_div.ugain;
 }
 
 double ATM90E32::GetLineCurrent(atm90_chan chan)
